@@ -18,15 +18,23 @@ namespace Threading
         }
         void Go()
         {
-            Monitor.Enter(_lock);
+            bool lockTaken = false;
+            Monitor.Enter(_lock,ref lockTaken);
+            try
+            {
                 if (!_done)
                 {
                     Console.WriteLine("done");
                     _done = true;
                 }
-
-            Monitor.Exit(_lock);
-            
+            }
+            finally
+            {
+                if (lockTaken)
+                {
+                    Monitor.Exit(_lock);
+                }
+            }
         }
 
         public void LoopExample()
@@ -40,5 +48,35 @@ namespace Threading
                 //t.Join();
             }
         }
+        private readonly object _lock1 = new object();
+        private readonly object _lock2 = new object();
+
+        public void Deadlock()
+        {
+            new Thread(_ => {
+                lock (_lock2)
+                {
+                    Thread.Sleep(100);
+                    lock (_lock1)
+                    {
+                        
+                        Console.WriteLine("out of lock in thread");
+                    }
+                }
+            }).Start();
+
+            lock (_lock1)
+            {
+                Thread.Sleep(100);
+                lock (_lock2)
+                {
+
+                    Console.WriteLine("out of lock");
+                }
+            }
+
+        }
+
+         
     }
 }
